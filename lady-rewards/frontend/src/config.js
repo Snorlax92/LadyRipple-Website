@@ -17,7 +17,7 @@ export const LADYCHAIN = {
 export const LRP_ADDRESS = '0x0F7418A346D88E12eC93337998EE0e9d2365fd12';
 export const LADY_REWARDS_ADDRESS = '0x92d7e7d72CCe3616D13509cb31711890AD264438';
 
-export const INDEXER_URL = 'http://localhost:3001'; // Replace with deployed indexer URL
+export const INDEXER_URL = 'https://ladyripple-website-production.up.railway.app';
 
 export const LADY_REWARDS_ABI = [
   {
