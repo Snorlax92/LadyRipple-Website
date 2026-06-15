@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useReadContract, useChainId, useSwitchChain } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { 
+  useAccount, 
+  useConnect, 
+  useDisconnect, 
+  useReadContract, 
+  useChainId, 
+  useSwitchChain 
+} from 'wagmi';
 import { INDEXER_URL, LADY_REWARDS_ADDRESS, LADY_REWARDS_ABI, CHAIN_ID } from './config.js';
 import CrownHolder from './components/CrownHolder.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import ClaimButton from './components/ClaimButton.jsx';
+import Swap from './components/Swap.jsx';
 
 export default function App() {
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const onWrongChain = isConnected && chainId !== CHAIN_ID;
+
+  // Lógica de enrutamiento simple basada en el pathname
+  const isSwapPage = window.location.pathname.startsWith('/swap');
 
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
@@ -25,17 +35,19 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Let the server resolve the canonical week using its PST boundary logic
-    fetch(`${INDEXER_URL}/leaderboard`)
-      .then((r) => r.json())
-      .then((data) => {
-        setLeaderboardData(data);
-        setCurrentWeek(data.week); // authoritative week from server
-      })
-      .catch(() => {});
-  }, [refreshAt]);
+    // Solo cargamos el leaderboard si no estamos en la página de Swap
+    if (!isSwapPage) {
+      fetch(`${INDEXER_URL}/leaderboard`)
+        .then((r) => r.json())
+        .then((data) => {
+          setLeaderboardData(data);
+          setCurrentWeek(data.week);
+        })
+        .catch(() => {});
+    }
+  }, [refreshAt, isSwapPage]);
 
-  // Auto-refresh every 60s
+  // Refrescar automáticamente cada 60s
   useEffect(() => {
     const id = setInterval(() => setRefreshAt(Date.now()), 60_000);
     return () => clearInterval(id);
@@ -50,14 +62,31 @@ export default function App() {
 
       {/* Header */}
       <header style={styles.header}>
-        <a href="https://ladyripple.xyz" style={styles.logo}>
-          <img
-            src={`${import.meta.env.BASE_URL}LadyRipple.jpg`}
-            alt="LadyRipple"
-            style={styles.logoImg}
-          />
-          <span style={styles.logoText}>LadyRipple</span>
-        </a>
+        <div style={styles.headerLeft}>
+          <a href="https://ladyripple.xyz" style={styles.logo}>
+            <img
+              src={`${import.meta.env.BASE_URL}LadyRipple.jpg`}
+              alt="LadyRipple"
+              style={styles.logoImg}
+            />
+            <span style={styles.logoText}>LadyRipple</span>
+          </a>
+          <nav style={styles.nav}>
+            <a 
+              href="/rewards" 
+              style={{ ...styles.navLink, ...(!isSwapPage ? styles.navLinkActive : {}) }}
+            >
+              REWARDS
+            </a>
+            <a 
+              href="/swap" 
+              style={{ ...styles.navLink, ...(isSwapPage ? styles.navLinkActive : {}) }}
+            >
+              SWAP
+            </a>
+          </nav>
+        </div>
+        
         <div style={styles.headerRight}>
           {poolBalance != null && (
             <div style={styles.poolBadge}>
@@ -69,20 +98,31 @@ export default function App() {
               {fmt(address)} ✕
             </button>
           ) : (
-            <button
-              onClick={() => connect({ connector: injected() })}
-              style={{ ...styles.walletBtn, ...styles.connectBtn }}
-            >
-              Connect Wallet
-            </button>
+            <div style={styles.connectorContainer}>
+              {connectors
+                .filter((connector, index, self) => {
+                  if (self.findIndex((c) => c.name === connector.name) !== index) return false;
+                  if (connector.name === 'Injected' && self.some((c) => c.name !== 'Injected')) return false;
+                  return true;
+                })
+                .map((connector) => (
+                  <button
+                    key={connector.uid}
+                    onClick={() => connect({ connector })}
+                    style={{ ...styles.walletBtn, ...styles.connectBtn }}
+                  >
+                    {connector.name === 'Injected' ? 'MetaMask' : connector.name}
+                  </button>
+                ))}
+            </div>
           )}
         </div>
       </header>
 
-      {/* Wrong network banner */}
+      {/* Banner de red incorrecta */}
       {onWrongChain && (
         <div style={styles.networkBanner}>
-          Wrong network — you need to be on LadyChain to claim rewards.
+          Wrong network — you need to be on LadyChain to trade or claim rewards.
           <button
             style={styles.networkBtn}
             onClick={() => switchChain({ chainId: CHAIN_ID })}
@@ -94,53 +134,70 @@ export default function App() {
 
       {/* Hero */}
       <div style={styles.hero}>
-        <div style={styles.heroEyebrow}>$LRP · LADYCHAIN</div>
-        <h1 style={styles.heroTitle}>She doesn't follow waves.<br />She starts them.</h1>
+        <div style={styles.heroEyebrow}>
+          {isSwapPage ? 'LADYSWAP · LADYCHAIN' : '$LRP · LADYCHAIN'}
+        </div>
+        <h1 style={styles.heroTitle}>
+          {isSwapPage ? (
+            <>Instant Token Swap<br />Simple &amp; Secure.</>
+          ) : (
+            <>She doesn't follow waves.<br />She starts them.</>
+          )}
+        </h1>
         <p style={styles.heroSub}>
-          Buy $LRP to climb the weekly leaderboard. Top 10 buyers and the Lady Crown winner
-          earn LRP rewards every week.
+          {isSwapPage ? (
+            'Trade your LADY and LRP tokens instantly on LadyChain with decentralized liquidity.'
+          ) : (
+            'Buy $LRP to climb the weekly leaderboard. Top 10 buyers and the Lady Crown winner earn LRP rewards every week.'
+          )}
         </p>
       </div>
 
-      {/* Main content */}
+      {/* Contenido principal */}
       <main style={styles.main}>
-        {/* Claim section — only shown when connected and week is resolved */}
-        {isConnected && currentWeek != null && <ClaimButton week={currentWeek} />}
+        {isSwapPage ? (
+          <Swap />
+        ) : (
+          <>
+            {/* Sección de reclamos: solo se muestra si está conectado y la semana está resuelta */}
+            {isConnected && currentWeek != null && <ClaimButton week={currentWeek} />}
 
-        {/* Crown */}
-        <CrownHolder
-          crown={leaderboardData?.crown}
-          week={currentWeek}
-        />
+            {/* Titular de la corona */}
+            <CrownHolder
+              crown={leaderboardData?.crown}
+              week={currentWeek}
+            />
 
-        {/* Leaderboard */}
-        <Leaderboard
-          entries={leaderboardData?.leaderboard}
-          week={currentWeek}
-        />
+            {/* Tabla de clasificación */}
+            <Leaderboard
+              entries={leaderboardData?.leaderboard}
+              week={currentWeek}
+            />
 
-        {/* Rules */}
-        <div style={styles.rules}>
-          <div style={styles.rulesTitle}>HOW IT WORKS</div>
-          <div style={styles.rulesList}>
-            <div style={styles.rule}>
-              <span style={styles.ruleIcon}>🌊</span>
-              <span>Buy $LRP on LadySwap — every buy is tracked automatically</span>
+            {/* Reglas de participación */}
+            <div style={styles.rules}>
+              <div style={styles.rulesTitle}>HOW IT WORKS</div>
+              <div style={styles.rulesList}>
+                <div style={styles.rule}>
+                  <span style={styles.ruleIcon}>🌊</span>
+                  <span>Buy $LRP on LadySwap — every buy is tracked automatically</span>
+                </div>
+                <div style={styles.rule}>
+                  <span style={styles.ruleIcon}>📊</span>
+                  <span>Top 10 buyers by weekly volume split 70% of the prize pool</span>
+                </div>
+                <div style={styles.rule}>
+                  <span style={styles.ruleIcon}>👑</span>
+                  <span>Biggest single buy earns the Lady Crown + 30% bonus reward</span>
+                </div>
+                <div style={styles.rule}>
+                  <span style={styles.ruleIcon}>💎</span>
+                  <span>Connect your wallet after week ends to claim your LRP rewards</span>
+                </div>
+              </div>
             </div>
-            <div style={styles.rule}>
-              <span style={styles.ruleIcon}>📊</span>
-              <span>Top 10 buyers by weekly volume split 70% of the prize pool</span>
-            </div>
-            <div style={styles.rule}>
-              <span style={styles.ruleIcon}>👑</span>
-              <span>Biggest single buy earns the Lady Crown + 30% bonus reward</span>
-            </div>
-            <div style={styles.rule}>
-              <span style={styles.ruleIcon}>💎</span>
-              <span>Connect your wallet after week ends to claim your LRP rewards</span>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </main>
 
       <footer style={styles.footer}>
@@ -148,7 +205,7 @@ export default function App() {
           ladyripple.xyz
         </a>
         {' · '}
-        <a href="https://ladyswap.us/swap" target="_blank" rel="noreferrer" style={styles.link}>
+        <a href="/swap" style={styles.link}>
           LadySwap
         </a>
         {' · '}
@@ -188,6 +245,10 @@ const styles = {
     borderBottom: '1px solid rgba(192,132,252,0.15)',
     backdropFilter: 'blur(12px)',
   },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+  },
   logo: { display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' },
   logoImg: {
     width: 44,
@@ -203,6 +264,24 @@ const styles = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   },
+  nav: {
+    display: 'flex',
+    gap: '20px',
+    marginLeft: '32px',
+  },
+  navLink: {
+    color: '#94a3b8',
+    textDecoration: 'none',
+    fontFamily: 'Orbitron, sans-serif',
+    fontSize: '12px',
+    fontWeight: '700',
+    letterSpacing: '1px',
+    transition: 'color 0.2s',
+  },
+  navLinkActive: {
+    color: '#f0abfc',
+    textShadow: '0 0 10px rgba(240, 171, 252, 0.4)',
+  },
   headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
   poolBadge: {
     background: 'rgba(251,191,36,0.1)',
@@ -212,6 +291,10 @@ const styles = {
     fontSize: 12,
     color: '#fbbf24',
     fontFamily: 'Orbitron, sans-serif',
+  },
+  connectorContainer: {
+    display: 'flex',
+    gap: 8,
   },
   walletBtn: {
     background: 'rgba(192,132,252,0.1)',
@@ -271,6 +354,7 @@ const styles = {
     border: '1px solid rgba(192,132,252,0.15)',
     borderRadius: 16,
     padding: 24,
+    marginTop: 24,
   },
   rulesTitle: {
     fontFamily: 'Orbitron, sans-serif',
