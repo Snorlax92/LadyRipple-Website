@@ -2,9 +2,13 @@ import React from 'react';
 
 function formatWeek(week) {
   if (week == null) return '';
-  const start = new Date(week * 604800 * 1000);
-  const end = new Date((week + 1) * 604800 * 1000 - 1);
-  const opts = { month: 'short', day: 'numeric' };
+  // Week opens Saturday 9pm PST = Sunday 05:00 UTC (epoch offset = 3 days + 5 hrs = 277200s)
+  const weekOpenUtc = week * 604800 + 277200;
+  const weekCloseUtc = weekOpenUtc + 604800;
+  // Shift back 8h (PST = UTC-8) so display dates reflect Saturday→Friday PST window
+  const start = new Date((weekOpenUtc - 8 * 3600) * 1000);
+  const end = new Date((weekCloseUtc - 8 * 3600 - 1) * 1000);
+  const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' };
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
 }
 

@@ -5,9 +5,11 @@ const RANK_LABELS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9t
 
 function formatWeek(week) {
   if (week == null) return '';
-  const start = new Date(week * 604800 * 1000);
-  const end = new Date((week + 1) * 604800 * 1000 - 1);
-  const opts = { month: 'short', day: 'numeric' };
+  const weekOpenUtc = week * 604800 + 277200;
+  const weekCloseUtc = weekOpenUtc + 604800;
+  const start = new Date((weekOpenUtc - 8 * 3600) * 1000);
+  const end = new Date((weekCloseUtc - 8 * 3600 - 1) * 1000);
+  const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' };
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
 }
 
