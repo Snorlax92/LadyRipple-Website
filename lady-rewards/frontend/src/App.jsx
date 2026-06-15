@@ -50,14 +50,14 @@ export default function App() {
 
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.logo}>
+        <a href="https://ladyripple.xyz" style={styles.logo}>
           <img
             src={`${import.meta.env.BASE_URL}LadyRipple.jpg`}
             alt="LadyRipple"
             style={styles.logoImg}
           />
           <span style={styles.logoText}>LadyRipple</span>
-        </div>
+        </a>
         <div style={styles.headerRight}>
           {poolBalance != null && (
             <div style={styles.poolBadge}>
@@ -188,7 +188,7 @@ const styles = {
     borderBottom: '1px solid rgba(192,132,252,0.15)',
     backdropFilter: 'blur(12px)',
   },
-  logo: { display: 'flex', alignItems: 'center', gap: 12 },
+  logo: { display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' },
   logoImg: {
     width: 44,
     height: 44,
