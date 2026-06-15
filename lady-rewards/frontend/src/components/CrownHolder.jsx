@@ -1,5 +1,13 @@
 import React from 'react';
 
+function formatWeek(week) {
+  if (week == null) return '';
+  const start = new Date(week * 604800 * 1000);
+  const end = new Date((week + 1) * 604800 * 1000 - 1);
+  const opts = { month: 'short', day: 'numeric' };
+  return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
+}
+
 export default function CrownHolder({ crown, week }) {
   const fmt = (addr) => addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : '—';
   const lrp = (n) => n ? (BigInt(n) / 10n ** 18n).toLocaleString() : '0';
@@ -8,7 +16,7 @@ export default function CrownHolder({ crown, week }) {
     <div style={styles.card}>
       <div style={styles.crownIcon}>👑</div>
       <div style={styles.title}>LADY CROWN</div>
-      <div style={styles.subtitle}>Biggest Single Buy — Week {week}</div>
+      <div style={styles.subtitle}>Biggest Single Buy — {formatWeek(week)}</div>
       {crown ? (
         <>
           <div style={styles.address}>{fmt(crown.address)}</div>

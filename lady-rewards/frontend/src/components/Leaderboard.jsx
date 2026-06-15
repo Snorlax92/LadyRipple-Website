@@ -3,6 +3,14 @@ import React from 'react';
 const RANK_COLORS = ['#fbbf24', '#94a3b8', '#c2763a', '#a78bfa', '#a78bfa'];
 const RANK_LABELS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
+function formatWeek(week) {
+  if (week == null) return '';
+  const start = new Date(week * 604800 * 1000);
+  const end = new Date((week + 1) * 604800 * 1000 - 1);
+  const opts = { month: 'short', day: 'numeric' };
+  return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
+}
+
 export default function Leaderboard({ entries, week }) {
   const fmt = (addr) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
   const lrp = (n) => (BigInt(n) / 10n ** 18n).toLocaleString();
@@ -19,7 +27,7 @@ export default function Leaderboard({ entries, week }) {
     <div style={styles.container}>
       <div style={styles.header}>
         <span style={styles.headerTitle}>WEEKLY BUY LEADERBOARD</span>
-        <span style={styles.weekBadge}>Week {week}</span>
+        <span style={styles.weekBadge}>{formatWeek(week)}</span>
       </div>
       <div style={styles.list}>
         {entries.map((entry, i) => (
