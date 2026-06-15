@@ -258,7 +258,10 @@ export default function App() {
       {/* Contenido principal */}
       <main style={styles.main}>
         {isSwapPage ? (
-          <Swap handleWalletSelect={handleWalletSelect} wallets={wallets} />
+          <Swap onConnectClick={() => {
+            setShowDropdown(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }} />
         ) : (
           <>
             {/* Sección de reclamos */}

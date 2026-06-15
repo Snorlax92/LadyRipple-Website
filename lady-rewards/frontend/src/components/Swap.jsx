@@ -19,12 +19,10 @@ import {
   CHAIN_ID 
 } from '../config.js';
 
-export default function Swap({ handleWalletSelect, wallets }) {
+export default function Swap({ onConnectClick }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-
-  const [showDropdown, setShowDropdown] = useState(false);
 
   const [fromToken, setFromToken] = useState('LADY'); // 'LADY' o 'LRP'
   const [toToken, setToToken] = useState('LRP');
@@ -148,7 +146,7 @@ export default function Swap({ handleWalletSelect, wallets }) {
   // Ejecutar Swap
   const handleSwap = async () => {
     if (!isConnected) {
-      setShowDropdown(!showDropdown);
+      if (onConnectClick) onConnectClick();
       return;
     }
     if (chainId !== CHAIN_ID) {
@@ -267,17 +265,6 @@ export default function Swap({ handleWalletSelect, wallets }) {
 
   return (
     <div style={styles.container}>
-      {showDropdown && !isConnected && (
-        <div 
-          onClick={() => setShowDropdown(false)} 
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999,
-            background: 'transparent',
-          }}
-        />
-      )}
       <div style={styles.card}>
         <div style={styles.cardHeader}>
           <h2 style={styles.cardTitle}>LadySwap</h2>
@@ -432,47 +419,20 @@ export default function Swap({ handleWalletSelect, wallets }) {
           </div>
         )}
 
-        {/* Botón Principal y Selector de Wallet */}
-        <div style={styles.walletBtnContainer}>
-          <button
-            onClick={handleSwap}
-            style={{
-              ...styles.actionBtn,
-              ...(getButtonText() === 'Swap' || getButtonText() === 'Approve LRP' || !isConnected ? styles.actionBtnActive : {}),
-            }}
-            disabled={
-              isEstimating || 
-              (isConnected && chainId === CHAIN_ID && (!fromAmount || parseFloat(fromAmount) <= 0 || hasInsufficientBalance()))
-            }
-          >
-            {getButtonText()}
-          </button>
-
-          {showDropdown && !isConnected && (
-            <div style={styles.dropdownMenu}>
-              {wallets.map((wallet) => (
-                <button
-                  key={wallet.name}
-                  onClick={() => {
-                    setShowDropdown(false);
-                    handleWalletSelect(wallet);
-                  }}
-                  style={styles.dropdownItem}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(192, 132, 252, 0.15)';
-                    e.currentTarget.style.color = '#f0abfc';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#e2e8f0';
-                  }}
-                >
-                  <span>{wallet.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Botón Principal */}
+        <button
+          onClick={handleSwap}
+          style={{
+            ...styles.actionBtn,
+            ...(getButtonText() === 'Swap' || getButtonText() === 'Approve LRP' || !isConnected ? styles.actionBtnActive : {}),
+          }}
+          disabled={
+            isEstimating || 
+            (isConnected && chainId === CHAIN_ID && (!fromAmount || parseFloat(fromAmount) <= 0 || hasInsufficientBalance()))
+          }
+        >
+          {getButtonText()}
+        </button>
       </div>
     </div>
   );
