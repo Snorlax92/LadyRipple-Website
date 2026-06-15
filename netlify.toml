@@ -1,2 +1,8 @@
 [build]
+  command = "cd lady-rewards/frontend && npm install && npm run build && cp -r dist ../../LadyRipple-Website-Package/rewards"
   publish = "LadyRipple-Website-Package"
+
+[[redirects]]
+  from = "/rewards/*"
+  to = "/rewards/index.html"
+  status = 200
