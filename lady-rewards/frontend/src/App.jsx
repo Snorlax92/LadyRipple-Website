@@ -24,6 +24,8 @@ export default function App() {
 
   // Lógica de enrutamiento simple basada en el pathname
   const isSwapPage = window.location.pathname.startsWith('/swap');
+  const swapHref = '/swap';
+  const rewardsHref = '/rewards';
 
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
@@ -161,14 +163,14 @@ export default function App() {
           </a>
           <nav style={styles.nav}>
             <a 
-              href="/rewards" 
+              href={rewardsHref} 
               style={{ ...styles.navLink, ...(!isSwapPage ? styles.navLinkActive : {}) }}
             >
               <span className="nav-icon">🏆</span>
               <span className="nav-text">REWARDS</span>
             </a>
             <a 
-              href="/swap" 
+              href={swapHref} 
               style={{ ...styles.navLink, ...(isSwapPage ? styles.navLinkActive : {}) }}
             >
               <span className="nav-icon">🔄</span>
@@ -256,7 +258,7 @@ export default function App() {
       {/* Contenido principal */}
       <main style={styles.main}>
         {isSwapPage ? (
-          <Swap />
+          <Swap handleWalletSelect={handleWalletSelect} wallets={wallets} />
         ) : (
           <>
             {/* Sección de reclamos */}

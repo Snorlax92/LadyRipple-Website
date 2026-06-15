@@ -19,95 +19,12 @@ import {
   CHAIN_ID 
 } from '../config.js';
 
-export default function Swap() {
+export default function Swap({ handleWalletSelect, wallets }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { connect, connectors } = useConnect();
 
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Configuración de wallets fijas para el menú desplegable con sus targets y RDNS (EIP-6963)
-  const wallets = [
-    {
-      name: 'MetaMask',
-      rdns: 'io.metamask',
-      target: 'metaMask'
-    },
-    {
-      name: 'Trust Wallet',
-      rdns: 'com.trustwallet.app',
-      target: 'trust'
-    },
-    {
-      name: 'SafePal',
-      rdns: 'io.safepal',
-      target: 'safePal'
-    },
-    {
-      name: 'Zerion',
-      rdns: 'io.zerion',
-      target: 'zerion'
-    },
-    {
-      name: 'Bitget Wallet',
-      rdns: 'com.bitkeep.wallet',
-      target: 'tokenPocket' // O fallback a injected genérico
-    },
-    {
-      name: 'WalletConnect',
-      target: 'walletConnect'
-    }
-  ];
-
-  const handleWalletSelect = (wallet) => {
-    setShowDropdown(false);
-    
-    if (wallet.target === 'walletConnect') {
-      const wcProjectId = import.meta.env.VITE_WC_PROJECT_ID;
-      const wcConnector = connectors.find(c => c.id === 'walletConnect');
-      if (wcConnector) {
-        connect({ connector: wcConnector });
-      } else if (wcProjectId) {
-        connect({ connector: walletConnect({ projectId: wcProjectId }) });
-      } else {
-        alert('WalletConnect Project ID is not configured in .env. Falling back to default injected wallet.');
-        connect({ connector: connectors.find(c => c.id === 'injected') || injected() });
-      }
-    } else {
-      // Intentar buscar el conector exacto anunciado por EIP-6963
-      const exactConnector = connectors.find(c => 
-        c.id === wallet.rdns || 
-        c.id === wallet.target || 
-        c.name.toLowerCase().replace(/\s+/g, '') === wallet.name.toLowerCase().replace(/\s+/g, '')
-      );
-
-      if (exactConnector) {
-        // Conectar usando el proveedor aislado por EIP-6963
-        connect({ connector: exactConnector });
-      } else {
-        // Fallback: conexión directa al target específico
-        connect(
-          { connector: injected({ target: wallet.target }) },
-          {
-            onError: (err) => {
-              console.warn(`Specific target connection failed for ${wallet.name}, falling back to generic injected connector...`, err);
-              const genericInjected = connectors.find(c => c.id === 'injected');
-              if (genericInjected) {
-                connect({ connector: genericInjected });
-              } else {
-                try {
-                  connect({ connector: injected() });
-                } catch (fallbackErr) {
-                  console.error(fallbackErr);
-                }
-              }
-            }
-          }
-        );
-      }
-    }
-  };
 
   const [fromToken, setFromToken] = useState('LADY'); // 'LADY' o 'LRP'
   const [toToken, setToToken] = useState('LRP');
@@ -536,7 +453,10 @@ export default function Swap() {
               {wallets.map((wallet) => (
                 <button
                   key={wallet.name}
-                  onClick={() => handleWalletSelect(wallet)}
+                  onClick={() => {
+                    setShowDropdown(false);
+                    handleWalletSelect(wallet);
+                  }}
                   style={styles.dropdownItem}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'rgba(192, 132, 252, 0.15)';
