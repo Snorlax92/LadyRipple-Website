@@ -7,6 +7,7 @@ import {
   useChainId, 
   useSwitchChain 
 } from 'wagmi';
+import { injected, walletConnect } from 'wagmi/connectors';
 import { INDEXER_URL, LADY_REWARDS_ADDRESS, LADY_REWARDS_ABI, CHAIN_ID } from './config.js';
 import CrownHolder from './components/CrownHolder.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
@@ -27,6 +28,7 @@ export default function App() {
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
   const [refreshAt, setRefreshAt] = useState(Date.now());
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const { data: poolBalance } = useReadContract({
     address: LADY_REWARDS_ADDRESS,
@@ -56,9 +58,99 @@ export default function App() {
   const fmt = (addr) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
   const lrp = (n) => n != null ? (BigInt(n.toString()) / 10n ** 18n).toLocaleString() : '—';
 
+  // Configuración de wallets fijas para el menú desplegable con sus targets y RDNS (EIP-6963)
+  const wallets = [
+    {
+      name: 'MetaMask',
+      rdns: 'io.metamask',
+      target: 'metaMask'
+    },
+    {
+      name: 'Trust Wallet',
+      rdns: 'com.trustwallet.app',
+      target: 'trust'
+    },
+    {
+      name: 'SafePal',
+      rdns: 'io.safepal',
+      target: 'safePal'
+    },
+    {
+      name: 'Zerion',
+      rdns: 'io.zerion',
+      target: 'zerion'
+    },
+    {
+      name: 'Bitget Wallet',
+      rdns: 'com.bitkeep.wallet',
+      target: 'tokenPocket' // O fallback a injected genérico
+    },
+    {
+      name: 'WalletConnect',
+      target: 'walletConnect'
+    }
+  ];
+
+  const handleWalletSelect = (wallet) => {
+    setShowDropdown(false);
+    
+    if (wallet.target === 'walletConnect') {
+      const wcProjectId = import.meta.env.VITE_WC_PROJECT_ID;
+      const wcConnector = connectors.find(c => c.id === 'walletConnect');
+      if (wcConnector) {
+        connect({ connector: wcConnector });
+      } else if (wcProjectId) {
+        connect({ connector: walletConnect({ projectId: wcProjectId }) });
+      } else {
+        alert('WalletConnect Project ID is not configured in .env. Falling back to default injected wallet.');
+        connect({ connector: connectors.find(c => c.id === 'injected') || injected() });
+      }
+    } else {
+      // Intentar buscar el conector exacto anunciado por EIP-6963
+      const exactConnector = connectors.find(c => 
+        c.id === wallet.rdns || 
+        c.id === wallet.target || 
+        c.name.toLowerCase().replace(/\s+/g, '') === wallet.name.toLowerCase().replace(/\s+/g, '')
+      );
+
+      if (exactConnector) {
+        // Conectar usando el proveedor aislado por EIP-6963
+        connect({ connector: exactConnector });
+      } else {
+        // Fallback: conexión directa al target específico
+        connect(
+          { connector: injected({ target: wallet.target }) },
+          {
+            onError: (err) => {
+              console.warn(`Specific target connection failed for ${wallet.name}, falling back to generic injected connector...`, err);
+              const genericInjected = connectors.find(c => c.id === 'injected');
+              if (genericInjected) {
+                connect({ connector: genericInjected });
+              } else {
+                try {
+                  connect({ connector: injected() });
+                } catch (fallbackErr) {
+                  console.error(fallbackErr);
+                }
+              }
+            }
+          }
+        );
+      }
+    }
+  };
+
   return (
     <div style={styles.root}>
       <div style={styles.bg} />
+
+      {/* Backdrop invisible para cerrar el menú desplegable al hacer clic fuera */}
+      {showDropdown && (
+        <div 
+          onClick={() => setShowDropdown(false)} 
+          style={styles.dropdownBackdrop} 
+        />
+      )}
 
       {/* Header */}
       <header style={styles.header}>
@@ -98,22 +190,35 @@ export default function App() {
               {fmt(address)} ✕
             </button>
           ) : (
-            <div style={styles.connectorContainer}>
-              {connectors
-                .filter((connector, index, self) => {
-                  if (self.findIndex((c) => c.name === connector.name) !== index) return false;
-                  if (connector.name === 'Injected' && self.some((c) => c.name !== 'Injected')) return false;
-                  return true;
-                })
-                .map((connector) => (
-                  <button
-                    key={connector.uid}
-                    onClick={() => connect({ connector })}
-                    style={{ ...styles.walletBtn, ...styles.connectBtn }}
-                  >
-                    {connector.name === 'Injected' ? 'MetaMask' : connector.name}
-                  </button>
-                ))}
+            <div style={styles.walletBtnContainer}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                style={{ ...styles.walletBtn, ...styles.connectBtn }}
+              >
+                Connect Wallet
+              </button>
+              
+              {showDropdown && (
+                <div style={styles.dropdownMenu}>
+                  {wallets.map((wallet) => (
+                    <button
+                      key={wallet.name}
+                      onClick={() => handleWalletSelect(wallet)}
+                      style={styles.dropdownItem}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(192, 132, 252, 0.15)';
+                        e.currentTarget.style.color = '#f0abfc';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = '#e2e8f0';
+                      }}
+                    >
+                      <span>{wallet.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -159,7 +264,7 @@ export default function App() {
           <Swap />
         ) : (
           <>
-            {/* Sección de reclamos: solo se muestra si está conectado y la semana está resuelta */}
+            {/* Sección de reclamos */}
             {isConnected && currentWeek != null && <ClaimButton week={currentWeek} />}
 
             {/* Titular de la corona */}
@@ -237,7 +342,7 @@ const styles = {
   },
   header: {
     position: 'relative',
-    zIndex: 10,
+    zIndex: 1000,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -292,13 +397,13 @@ const styles = {
     color: '#fbbf24',
     fontFamily: 'Orbitron, sans-serif',
   },
-  connectorContainer: {
-    display: 'flex',
-    gap: 8,
+  walletBtnContainer: {
+    position: 'relative',
+    display: 'inline-block',
   },
   walletBtn: {
-    background: 'rgba(192,132,252,0.1)',
-    border: '1px solid rgba(192,132,252,0.4)',
+    background: 'rgba(192, 132, 252, 0.1)',
+    border: '1px solid rgba(192, 132, 252, 0.4)',
     borderRadius: 12,
     padding: '8px 18px',
     color: '#c084fc',
@@ -312,6 +417,45 @@ const styles = {
     fontFamily: 'Orbitron, sans-serif',
     fontSize: 12,
     letterSpacing: 1,
+  },
+  dropdownBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 999,
+    background: 'transparent',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    right: 0,
+    top: '100%',
+    marginTop: '12px',
+    background: 'rgba(13, 5, 30, 0.95)',
+    border: '1px solid rgba(192, 132, 252, 0.25)',
+    borderRadius: '16px',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    width: '220px',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.6)',
+    backdropFilter: 'blur(12px)',
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: 'transparent',
+    border: 'none',
+    color: '#e2e8f0',
+    padding: '10px 16px',
+    fontSize: '13px',
+    fontFamily: 'Orbitron, sans-serif',
+    borderRadius: '8px',
+    textAlign: 'left',
+    width: '100%',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   hero: {
     position: 'relative',
