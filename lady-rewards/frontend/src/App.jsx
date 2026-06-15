@@ -30,11 +30,7 @@ export default function App() {
   const [refreshAt, setRefreshAt] = useState(Date.now());
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const { data: poolBalance } = useReadContract({
-    address: LADY_REWARDS_ADDRESS,
-    abi: LADY_REWARDS_ABI,
-    functionName: 'rewardPoolBalance',
-  });
+
 
   useEffect(() => {
     // Solo cargamos el leaderboard si no estamos en la página de Swap
@@ -153,7 +149,7 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header style={styles.header}>
+      <header style={styles.header} className="header-container">
         <div style={styles.headerLeft}>
           <a href="https://ladyripple.xyz" style={styles.logo}>
             <img
@@ -161,30 +157,28 @@ export default function App() {
               alt="LadyRipple"
               style={styles.logoImg}
             />
-            <span style={styles.logoText}>LadyRipple</span>
+            <span style={styles.logoText} className="logo-text">LadyRipple</span>
           </a>
           <nav style={styles.nav}>
             <a 
               href="/rewards" 
               style={{ ...styles.navLink, ...(!isSwapPage ? styles.navLinkActive : {}) }}
             >
-              REWARDS
+              <span className="nav-icon">🏆</span>
+              <span className="nav-text">REWARDS</span>
             </a>
             <a 
               href="/swap" 
               style={{ ...styles.navLink, ...(isSwapPage ? styles.navLinkActive : {}) }}
             >
-              SWAP
+              <span className="nav-icon">🔄</span>
+              <span className="nav-text">SWAP</span>
             </a>
           </nav>
         </div>
         
         <div style={styles.headerRight}>
-          {poolBalance != null && (
-            <div style={styles.poolBadge}>
-              Pool: {lrp(poolBalance)} LRP
-            </div>
-          )}
+
           {isConnected ? (
             <button onClick={() => disconnect()} style={styles.walletBtn}>
               {fmt(address)} ✕
@@ -194,6 +188,7 @@ export default function App() {
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
                 style={{ ...styles.walletBtn, ...styles.connectBtn }}
+                className="wallet-btn-highlight"
               >
                 Connect Wallet
               </button>

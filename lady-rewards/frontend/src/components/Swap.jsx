@@ -8,7 +8,7 @@ import {
   useChainId,
   useSwitchChain
 } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { injected, walletConnect } from 'wagmi/connectors';
 import { formatUnits, parseUnits } from 'viem';
 import { 
   LRP_ADDRESS, 
@@ -23,7 +23,91 @@ export default function Swap() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
+
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Configuración de wallets fijas para el menú desplegable con sus targets y RDNS (EIP-6963)
+  const wallets = [
+    {
+      name: 'MetaMask',
+      rdns: 'io.metamask',
+      target: 'metaMask'
+    },
+    {
+      name: 'Trust Wallet',
+      rdns: 'com.trustwallet.app',
+      target: 'trust'
+    },
+    {
+      name: 'SafePal',
+      rdns: 'io.safepal',
+      target: 'safePal'
+    },
+    {
+      name: 'Zerion',
+      rdns: 'io.zerion',
+      target: 'zerion'
+    },
+    {
+      name: 'Bitget Wallet',
+      rdns: 'com.bitkeep.wallet',
+      target: 'tokenPocket' // O fallback a injected genérico
+    },
+    {
+      name: 'WalletConnect',
+      target: 'walletConnect'
+    }
+  ];
+
+  const handleWalletSelect = (wallet) => {
+    setShowDropdown(false);
+    
+    if (wallet.target === 'walletConnect') {
+      const wcProjectId = import.meta.env.VITE_WC_PROJECT_ID;
+      const wcConnector = connectors.find(c => c.id === 'walletConnect');
+      if (wcConnector) {
+        connect({ connector: wcConnector });
+      } else if (wcProjectId) {
+        connect({ connector: walletConnect({ projectId: wcProjectId }) });
+      } else {
+        alert('WalletConnect Project ID is not configured in .env. Falling back to default injected wallet.');
+        connect({ connector: connectors.find(c => c.id === 'injected') || injected() });
+      }
+    } else {
+      // Intentar buscar el conector exacto anunciado por EIP-6963
+      const exactConnector = connectors.find(c => 
+        c.id === wallet.rdns || 
+        c.id === wallet.target || 
+        c.name.toLowerCase().replace(/\s+/g, '') === wallet.name.toLowerCase().replace(/\s+/g, '')
+      );
+
+      if (exactConnector) {
+        // Conectar usando el proveedor aislado por EIP-6963
+        connect({ connector: exactConnector });
+      } else {
+        // Fallback: conexión directa al target específico
+        connect(
+          { connector: injected({ target: wallet.target }) },
+          {
+            onError: (err) => {
+              console.warn(`Specific target connection failed for ${wallet.name}, falling back to generic injected connector...`, err);
+              const genericInjected = connectors.find(c => c.id === 'injected');
+              if (genericInjected) {
+                connect({ connector: genericInjected });
+              } else {
+                try {
+                  connect({ connector: injected() });
+                } catch (fallbackErr) {
+                  console.error(fallbackErr);
+                }
+              }
+            }
+          }
+        );
+      }
+    }
+  };
 
   const [fromToken, setFromToken] = useState('LADY'); // 'LADY' o 'LRP'
   const [toToken, setToToken] = useState('LRP');
@@ -147,7 +231,7 @@ export default function Swap() {
   // Ejecutar Swap
   const handleSwap = async () => {
     if (!isConnected) {
-      connect({ connector: injected() });
+      setShowDropdown(!showDropdown);
       return;
     }
     if (chainId !== CHAIN_ID) {
@@ -266,6 +350,17 @@ export default function Swap() {
 
   return (
     <div style={styles.container}>
+      {showDropdown && !isConnected && (
+        <div 
+          onClick={() => setShowDropdown(false)} 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999,
+            background: 'transparent',
+          }}
+        />
+      )}
       <div style={styles.card}>
         <div style={styles.cardHeader}>
           <h2 style={styles.cardTitle}>LadySwap</h2>
@@ -420,20 +515,44 @@ export default function Swap() {
           </div>
         )}
 
-        {/* Botón Principal */}
-        <button
-          onClick={handleSwap}
-          style={{
-            ...styles.actionBtn,
-            ...(getButtonText() === 'Swap' || getButtonText() === 'Approve LRP' ? styles.actionBtnActive : {}),
-          }}
-          disabled={
-            isEstimating || 
-            (isConnected && chainId === CHAIN_ID && (!fromAmount || parseFloat(fromAmount) <= 0 || hasInsufficientBalance()))
-          }
-        >
-          {getButtonText()}
-        </button>
+        {/* Botón Principal y Selector de Wallet */}
+        <div style={styles.walletBtnContainer}>
+          <button
+            onClick={handleSwap}
+            style={{
+              ...styles.actionBtn,
+              ...(getButtonText() === 'Swap' || getButtonText() === 'Approve LRP' || !isConnected ? styles.actionBtnActive : {}),
+            }}
+            disabled={
+              isEstimating || 
+              (isConnected && chainId === CHAIN_ID && (!fromAmount || parseFloat(fromAmount) <= 0 || hasInsufficientBalance()))
+            }
+          >
+            {getButtonText()}
+          </button>
+
+          {showDropdown && !isConnected && (
+            <div style={styles.dropdownMenu}>
+              {wallets.map((wallet) => (
+                <button
+                  key={wallet.name}
+                  onClick={() => handleWalletSelect(wallet)}
+                  style={styles.dropdownItem}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(192, 132, 252, 0.15)';
+                    e.currentTarget.style.color = '#f0abfc';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span>{wallet.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -661,5 +780,42 @@ const styles = {
     color: '#ffffff',
     cursor: 'pointer',
     boxShadow: '0 0 16px rgba(255, 45, 155, 0.4)',
+  },
+  walletBtnContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: '100%',
+    marginBottom: '12px',
+    background: 'rgba(13, 5, 30, 0.98)',
+    border: '1px solid rgba(192, 132, 252, 0.3)',
+    borderRadius: '16px',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.8)',
+    backdropFilter: 'blur(12px)',
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: 'transparent',
+    border: 'none',
+    color: '#e2e8f0',
+    padding: '12px 16px',
+    fontSize: '14px',
+    fontFamily: 'Orbitron, sans-serif',
+    borderRadius: '8px',
+    textAlign: 'left',
+    width: '100%',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
 };

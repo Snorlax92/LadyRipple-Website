@@ -6,7 +6,50 @@
     <title>LadyRipple Rewards | $LRP Weekly Buy Leaderboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-    <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; padding: 0; background: #050011; }</style>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; padding: 0; background: #050011; }
+
+      /* Clases responsivas para navegación e iconos */
+      .nav-icon {
+        display: none !important;
+      }
+
+      @media (max-width: 640px) {
+        .nav-text {
+          display: none !important;
+        }
+        .nav-icon {
+          display: inline-block !important;
+          font-size: 16px;
+        }
+        .logo-text {
+          display: none !important;
+        }
+        .header-container {
+          padding: 12px 16px !important;
+        }
+        .wallet-btn-highlight {
+          background: linear-gradient(135deg, #ff2d9b, #7c3aed) !important;
+          color: #ffffff !important;
+          border: none !important;
+          box-shadow: 0 0 16px rgba(255, 45, 155, 0.8) !important;
+          font-weight: bold !important;
+          animation: pulseGlow 2s infinite alternate;
+        }
+      }
+
+      @keyframes pulseGlow {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 12px rgba(255, 45, 155, 0.6);
+        }
+        100% {
+          transform: scale(1.03);
+          box-shadow: 0 0 20px rgba(255, 45, 155, 0.9), 0 0 8px rgba(124, 58, 237, 0.8);
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
