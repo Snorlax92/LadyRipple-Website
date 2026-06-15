@@ -180,7 +180,7 @@ export default function Swap() {
         const tx = await writeContractAsync({
           address: LADYSWAP_ROUTER_ADDRESS,
           abi: LADYSWAP_ROUTER_ABI,
-          functionName: 'swapExactETHForTokens',
+          functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
           args: [amountOutMin, path, address, deadline],
           value: amountIn,
           gas: 500000n,
@@ -206,7 +206,7 @@ export default function Swap() {
         const tx = await writeContractAsync({
           address: LADYSWAP_ROUTER_ADDRESS,
           abi: LADYSWAP_ROUTER_ABI,
-          functionName: 'swapExactTokensForETH',
+          functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
           args: [amountIn, amountOutMin, path, address, deadline],
           gas: 500000n,
         });
