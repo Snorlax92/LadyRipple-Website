@@ -33,6 +33,11 @@ export default function Swap() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successTx, setSuccessTx] = useState('');
 
+  // Tolerancia de deslizamiento (slippage) - por defecto 1.0%
+  const [slippage, setSlippage] = useState(1.0);
+  const [customSlippage, setCustomSlippage] = useState('');
+  const [showCustom, setShowCustom] = useState(false);
+
   // Balances
   const { data: ladyBalance, refetch: refetchLadyBalance } = useBalance({
     address,
@@ -124,6 +129,21 @@ export default function Swap() {
     }
   };
 
+  // Manejar cambio en slippage preestablecido
+  const handlePresetSlippage = (val) => {
+    setSlippage(val);
+    setShowCustom(false);
+  };
+
+  // Manejar cambio en slippage personalizado
+  const handleCustomSlippageChange = (val) => {
+    setCustomSlippage(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0 && parsed <= 50) {
+      setSlippage(parsed);
+    }
+  };
+
   // Ejecutar Swap
   const handleSwap = async () => {
     if (!isConnected) {
@@ -148,9 +168,10 @@ export default function Swap() {
         throw new Error('Cotización no disponible. Espera un momento o introduce otro importe.');
       }
 
-      // Aplicamos un 1% de slippage (99/100)
+      // Aplicar slippage en puntos básicos (e.g. 1.0% -> 100 bps)
+      const slippageBps = BigInt(Math.floor(slippage * 100));
       const expectedOut = amountsOut[1];
-      const amountOutMin = (expectedOut * 99n) / 100n;
+      const amountOutMin = (expectedOut * (10000n - slippageBps)) / 10000n;
       const path = getPath();
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 minutos de límite
 
@@ -300,10 +321,65 @@ export default function Swap() {
             </div>
             <div style={styles.detailRow}>
               <span>Slippage Tolerance:</span>
-              <span>1.0%</span>
+              <span>{slippage.toFixed(1)}%</span>
             </div>
           </div>
         )}
+
+        {/* Panel de Configuración de Slippage */}
+        <div style={styles.slippagePanel}>
+          <div style={styles.slippageHeader}>Slippage Tolerance</div>
+          <div style={styles.slippageOptions}>
+            <button
+              onClick={() => handlePresetSlippage(0.5)}
+              style={{
+                ...styles.slippageBtn,
+                ...(!showCustom && slippage === 0.5 ? styles.slippageBtnActive : {}),
+              }}
+            >
+              0.5%
+            </button>
+            <button
+              onClick={() => handlePresetSlippage(1.0)}
+              style={{
+                ...styles.slippageBtn,
+                ...(!showCustom && slippage === 1.0 ? styles.slippageBtnActive : {}),
+              }}
+            >
+              1.0%
+            </button>
+            <button
+              onClick={() => handlePresetSlippage(2.0)}
+              style={{
+                ...styles.slippageBtn,
+                ...(!showCustom && slippage === 2.0 ? styles.slippageBtnActive : {}),
+              }}
+            >
+              2.0%
+            </button>
+            <button
+              onClick={() => setShowCustom(true)}
+              style={{
+                ...styles.slippageBtn,
+                ...(showCustom ? styles.slippageBtnActive : {}),
+              }}
+            >
+              Custom
+            </button>
+            {showCustom && (
+              <div style={styles.customInputWrapper}>
+                <input
+                  type="number"
+                  placeholder="1.0"
+                  value={customSlippage}
+                  onChange={(e) => handleCustomSlippageChange(e.target.value)}
+                  style={styles.slippageInput}
+                />
+                <span style={styles.percentSymbol}>%</span>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Mensajes de feedback */}
         {errorMessage && <div style={styles.errorText}>{errorMessage}</div>}
@@ -450,7 +526,7 @@ const styles = {
     padding: '12px',
     background: 'rgba(5, 0, 17, 0.3)',
     borderRadius: '12px',
-    marginBottom: '16px',
+    marginBottom: '12px',
   },
   detailRow: {
     display: 'flex',
@@ -458,6 +534,62 @@ const styles = {
     color: '#94a3b8',
     fontSize: '12px',
     marginBottom: '6px',
+  },
+  slippagePanel: {
+    background: 'rgba(5, 0, 17, 0.3)',
+    border: '1px solid rgba(192, 132, 252, 0.1)',
+    borderRadius: '12px',
+    padding: '12px',
+    marginBottom: '16px',
+  },
+  slippageHeader: {
+    color: '#94a3b8',
+    fontSize: '12px',
+    marginBottom: '8px',
+  },
+  slippageOptions: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  slippageBtn: {
+    background: 'rgba(13, 5, 30, 0.6)',
+    border: '1px solid rgba(192, 132, 252, 0.15)',
+    borderRadius: '8px',
+    color: '#94a3b8',
+    padding: '6px 12px',
+    fontSize: '11px',
+    cursor: 'pointer',
+    fontFamily: 'Orbitron, sans-serif',
+    transition: 'all 0.2s',
+  },
+  slippageBtnActive: {
+    background: 'rgba(255, 45, 155, 0.15)',
+    border: '1px solid rgba(255, 45, 155, 0.4)',
+    color: '#ff2d9b',
+    fontWeight: '700',
+  },
+  customInputWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  slippageInput: {
+    background: 'rgba(5, 0, 17, 0.8)',
+    border: '1px solid rgba(192, 132, 252, 0.2)',
+    borderRadius: '8px',
+    color: '#f8fafc',
+    fontSize: '11px',
+    width: '50px',
+    padding: '4px 8px',
+    outline: 'none',
+    textAlign: 'center',
+    fontFamily: 'monospace',
+  },
+  percentSymbol: {
+    color: '#94a3b8',
+    fontSize: '12px',
   },
   errorText: {
     color: '#fca5a5',
