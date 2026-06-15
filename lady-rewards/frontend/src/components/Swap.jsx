@@ -172,10 +172,12 @@ export default function Swap() {
       const slippageBps = BigInt(Math.floor(slippage * 100));
       const expectedOut = amountsOut[1];
       
-      // Ajuste del 17% de impuestos por transferencia del token LRP
+      // Ajuste de impuestos por transferencia del token LRP (2% compra, 5% venta)
       let expectedOutNet = expectedOut;
-      if (fromToken === 'LRP' || toToken === 'LRP') {
-        expectedOutNet = (expectedOut * 83n) / 100n;
+      if (fromToken === 'LRP') {
+        expectedOutNet = (expectedOut * 95n) / 100n; // 5% venta
+      } else if (toToken === 'LRP') {
+        expectedOutNet = (expectedOut * 98n) / 100n; // 2% compra
       }
 
       const amountOutMin = (expectedOutNet * (10000n - slippageBps)) / 10000n;
@@ -331,15 +333,17 @@ export default function Swap() {
               <span>{slippage.toFixed(1)}%</span>
             </div>
             <div style={styles.detailRow}>
-              <span style={{ color: '#fca5a5' }}>LRP Tax (17.0%):</span>
               <span style={{ color: '#fca5a5' }}>
-                -{(parseFloat(toAmount) * 0.17).toFixed(4)} {toToken}
+                LRP Tax ({toToken === 'LRP' ? '2.0%' : '5.0%'}):
+              </span>
+              <span style={{ color: '#fca5a5' }}>
+                -{(parseFloat(toAmount) * (toToken === 'LRP' ? 0.02 : 0.05)).toFixed(4)} {toToken}
               </span>
             </div>
             <div style={styles.detailRow}>
               <span>Est. Net Received:</span>
               <span style={{ color: '#86efac', fontWeight: 'bold' }}>
-                {(parseFloat(toAmount) * 0.83).toFixed(4)} {toToken}
+                {(parseFloat(toAmount) * (toToken === 'LRP' ? 0.98 : 0.95)).toFixed(4)} {toToken}
               </span>
             </div>
           </div>
