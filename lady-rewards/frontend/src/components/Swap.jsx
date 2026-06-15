@@ -162,7 +162,6 @@ export default function Swap() {
           functionName: 'swapExactETHForTokens',
           args: [amountOutMin, path, address, deadline],
           value: amountIn,
-          gasPrice: parseUnits('3000', 9),
           gas: 500000n,
         });
         setSuccessTx(tx);
@@ -176,7 +175,6 @@ export default function Swap() {
             abi: ERC20_ABI,
             functionName: 'approve',
             args: [LADYSWAP_ROUTER_ADDRESS, maxUint],
-            gasPrice: parseUnits('3000', 9),
             gas: 100000n,
           });
           // Esperamos o solicitamos refetch
@@ -189,7 +187,6 @@ export default function Swap() {
           abi: LADYSWAP_ROUTER_ABI,
           functionName: 'swapExactTokensForETH',
           args: [amountIn, amountOutMin, path, address, deadline],
-          gasPrice: parseUnits('3000', 9),
           gas: 500000n,
         });
         setSuccessTx(tx);
