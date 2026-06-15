@@ -171,7 +171,14 @@ export default function Swap() {
       // Aplicar slippage en puntos básicos (e.g. 1.0% -> 100 bps)
       const slippageBps = BigInt(Math.floor(slippage * 100));
       const expectedOut = amountsOut[1];
-      const amountOutMin = (expectedOut * (10000n - slippageBps)) / 10000n;
+      
+      // Ajuste del 17% de impuestos por transferencia del token LRP
+      let expectedOutNet = expectedOut;
+      if (fromToken === 'LRP' || toToken === 'LRP') {
+        expectedOutNet = (expectedOut * 83n) / 100n;
+      }
+
+      const amountOutMin = (expectedOutNet * (10000n - slippageBps)) / 10000n;
       const path = getPath();
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 minutos de límite
 
@@ -322,6 +329,18 @@ export default function Swap() {
             <div style={styles.detailRow}>
               <span>Slippage Tolerance:</span>
               <span>{slippage.toFixed(1)}%</span>
+            </div>
+            <div style={styles.detailRow}>
+              <span style={{ color: '#fca5a5' }}>LRP Tax (17.0%):</span>
+              <span style={{ color: '#fca5a5' }}>
+                -{(parseFloat(toAmount) * 0.17).toFixed(4)} {toToken}
+              </span>
+            </div>
+            <div style={styles.detailRow}>
+              <span>Est. Net Received:</span>
+              <span style={{ color: '#86efac', fontWeight: 'bold' }}>
+                {(parseFloat(toAmount) * 0.83).toFixed(4)} {toToken}
+              </span>
             </div>
           </div>
         )}
